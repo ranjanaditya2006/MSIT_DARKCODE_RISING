@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NirvachanNex | AI Electoral Simulator</title>
+    <link rel="stylesheet" href="ui-system.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- CORE THEME --- */
+        :root { --primary: #3b82f6; --accent: #a855f7; --bg-dark: #020617; --card-bg: rgba(30, 41, 59, 0.7); }
+        body { margin: 0; overflow: hidden; background: var(--bg-dark); font-family: 'Inter', sans-serif; color: #fff; }
+        
+        /* --- LAYOUT --- */
+        .app-shell { display: flex; flex-direction: column; height: 100vh; }
+        .app-header { height: 60px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; padding: 0 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); }
+        
+        .brand-text { 
+            font-weight: 800; font-size: 1.2rem; letter-spacing: 1px; 
+            background: linear-gradient(90deg, #fff, #94a3b8); 
+            -webkit-background-clip: text; background-clip: text; color: transparent; 
+        }
+        
+        .delhi-layout { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - 60px); }
+        
+        /* --- SIDEBAR --- */
+        .delhi-sidebar { background: rgba(15, 23, 42, 0.6); border-right: 1px solid rgba(255,255,255,0.05); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .nav-btn {
+            display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03); border: 1px solid transparent; color: #94a3b8; cursor: pointer; transition: all 0.2s;
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+        .nav-btn.active {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), rgba(168, 85, 247, 0.15));
+            border: 1px solid rgba(59, 130, 246, 0.4); color: #fff; box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .nav-icon { width: 32px; height: 32px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+
+        /* --- CONTENT AREA --- */
+        .delhi-content { padding: 30px; overflow-y: auto; position: relative; scroll-behavior: smooth; }
+        .delhi-content::-webkit-scrollbar { width: 6px; }
+        .delhi-content::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        
+        .section-header { margin-bottom: 30px; }
+        .page-title { 
+            font-size: 2.2rem; font-weight: 700; margin: 0; 
+            background: linear-gradient(to right, #fff, #cbd5e1); 
+            -webkit-background-clip: text; background-clip: text; color: transparent; 
+        }
+        .page-subtitle { color: #64748b; margin-top: 5px; }
+
+        /* --- SEAT GRIDS --- */
+        .zone-container { margin-bottom: 40px; animation: fadeIn 0.5s ease; }
+        .zone-title { color: #38bdf8; font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .seats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .seat-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 14px;
+            cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .seat-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.07); border-color: #38bdf8; box-shadow: 0 10px 20px -5px rgba(56, 189, 248, 0.15); }
+        .seat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #38bdf8; opacity: 0; transition: opacity 0.2s; }
+        .seat-card:hover::before { opacity: 1; }
+        
+        .seat-name { font-weight: 500; font-size: 0.95rem; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .seat-meta { font-size: 0.75rem; color: #64748b; margin-top: 4px; text-transform: uppercase; }
+
+        /* --- SIMULATOR SLIDE (OVERLAY) --- */
+        .sim-overlay {
+            position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(16px);
+            z-index: 1000; display: none; opacity: 0; transition: opacity 0.3s ease;
+            align-items: center; justify-content: center;
+        }
+        .sim-overlay.active { display: flex; opacity: 1; }
+        
+        .sim-window {
+            width: 90%; max-width: 1400px; height: 90vh; background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9));
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .sim-header-bar {
+            padding: 20px 30px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+        .sim-seat-info h2 { margin: 0; font-size: 2rem; color: #fff; }
+        .sim-seat-tag { display: inline-block; padding: 4px 12px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; }
+
+        .sim-close-btn { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+        .sim-close-btn:hover { color: #ef4444; }
+
+        .sim-body { flex: 1; display: grid; grid-template-columns: 280px 1fr; overflow: hidden; }
+        
+        /* Sim Sidebar */
+        .sim-nav { padding: 30px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2); }
+        .sim-tab {
+            padding: 15px 20px; border-radius: 12px; color: #94a3b8; cursor: pointer; font-weight: 600; transition: all 0.2s; border: 1px solid transparent; text-align: left; background: none;
+        }
+        .sim-tab:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .sim-tab.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.2), transparent); border-left: 3px solid #3b82f6; color: #fff; }
+
+        /* Sim Content */
+        .sim-content-area { padding: 40px; overflow-y: auto; }
+        .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .metric-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px; }
+        .metric-label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .metric-value { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
+        .metric-delta { font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .delta-good { color: #4ade80; } .delta-bad { color: #f87171; }
+
+        .chart-box { height: 350px; background: rgba(0,0,0,0.2); border-radius: 16px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 25px; }
+        .ai-box { background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.05)); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 16px; padding: 25px; }
+        .ai-title { color: #38bdf8; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    <header class="app-header">
+        <div class="brand-text">NIRVACHAN <span style="font-weight:400; font-size:0.9rem; color:#64748b;">ONE NATION · ONE ELECTION</span></div>
+    </header>
+
+    <div class="delhi-layout">
+        <!-- SIDEBAR -->
+        <aside class="delhi-sidebar">
+            <div class="nav-btn active" onclick="loadView('mcd', this)">
+                <div class="nav-icon"><i class="fas fa-map-marked-alt"></i></div>
+                <div>MCD (Local)<div style="font-size:0.7rem; color:#64748b;" id="mcd-count">Loading...</div></div>
+            </div>
+            <div class="nav-btn" onclick="loadView('vs', this)">
+                <div class="nav-icon"><i class="fas fa-gavel"></i></div>
+                <div>Vidhan Sabha<div style="font-size:0.7rem; color:#64748b;" id="vs-count">Loading...</div></div>
+            </div>
+            <div class="nav-btn" onclick="loadView('ls', this)">
+                <div class="nav-icon"><i class="fas fa-landmark"></i></div>
+                <div>Lok Sabha<div style="font-size:0.7rem; color:#64748b;" id="ls-count">Loading...</div></div>
+            </div>
+        </aside>
+
+        <!-- DYNAMIC CONTENT AREA -->
+        <main class="delhi-content" id="mainContent">
+            <div style="display:flex; justify-content:center; align-items:center; height:100%;">
+                <div style="text-align:center; color:#64748b;">
+                    <i class="fas fa-server fa-3x" style="margin-bottom:15px;"></i><br>
+                    Connecting to NirvachanNex Cloud...
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- SIMULATOR OVERLAY -->
+<div class="sim-overlay" id="simOverlay">
+    <div class="sim-window">
+        <div class="sim-header-bar">
+            <div class="sim-seat-info">
+                <span class="sim-seat-tag" id="simSeatType">TYPE</span>
+                <h2 id="simSeatName">NAME</h2>
+            </div>
+            <button class="sim-close-btn" onclick="closeSim()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sim-body">
+            <nav class="sim-nav">
+                <button class="sim-tab active" onclick="updateSimTab('governance')"><i class="fas fa-balance-scale mr-2"></i> Governance</button>
+                <button class="sim-tab" onclick="updateSimTab('administrative')"><i class="fas fa-clipboard-check mr-2"></i> Administrative</button>
+                <button class="sim-tab" onclick="updateSimTab('financial')"><i class="fas fa-rupee-sign mr-2"></i> Financial</button>
+                <button class="sim-tab" onclick="updateSimTab('constitutional')"><i class="fas fa-book mr-2"></i> Constitutional</button>
+            </nav>
+            <div class="sim-content-area">
+                <div id="metricContainer"></div>
+                <div class="chart-box">
+                    <canvas id="simChart"></canvas>
+                </div>
+                <div class="ai-box">
+                    <div class="ai-title"><i class="fas fa-robot"></i> AI IMPACT ANALYSIS</div>
+                    <p style="font-size: 0.95rem; line-height: 1.6; color: #cbd5e1;" id="aiText">Waiting for AI Model...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = "http://localhost:5000/api";
+    let currentSim = {};
+    let myChart = null;
+
+    // --- 1. DYNAMIC DATA LOADER ---
+    async function loadView(level, btnElement) {
+        // UI Updates
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        if(btnElement) btnElement.classList.add('active');
+        
+        const container = document.getElementById('mainContent');
+        container.innerHTML = '<div style="text-align:center; padding:50px; color:#64748b;">Fetching Seats from Database...</div>';
+
+        try {
+            // Fetch Seats from MongoDB via Node Backend
+            const res = await fetch(`${API_BASE_URL}/seats/${level}`);
+            const seats = await res.json();
+            
+            if(!seats || seats.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#ef4444;">No seats found in database for ${level.toUpperCase()}.<br>Did you run 'node seed.js'?</div>`;
+                return;
+            }
+
+            // Render Grid
+            let title = level === 'ls' ? "Lok Sabha" : (level === 'vs' ? "Vidhan Sabha" : "MCD Wards");
+            let html = `<div class="section-header"><h1 class="page-title">${title}</h1><div class="page-subtitle">Loaded ${seats.length} constituencies from cloud</div></div>`;
+            
+            html += `<div class="zone-container"><div class="seats-grid">`;
+            seats.forEach(seat => {
+                html += `<div class="seat-card" onclick="openSim('${seat._id}', '${seat.name}')">
+                            <div class="seat-name">${seat.name}</div>
+                            <div class="seat-meta">${seat.type}</div>
+                         </div>`;
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = `<div style="text-align:center; color:#ef4444;">Connection Failed.<br>Is the backend running on port 5000?</div>`;
+        }
+    }
+
+    // --- 2. SIMULATION ENGINE CONNECTED TO BACKEND ---
+    async function openSim(seatId, seatName) {
+        document.getElementById('simOverlay').classList.add('active');
+        document.getElementById('simSeatName').innerText = seatName;
+        document.getElementById('simSeatType').innerText = "CALCULATING...";
+        document.getElementById('metricContainer').innerHTML = "<div style='color:#64748b'>Simulating scenarios...</div>";
+        document.getElementById('aiText').innerText = "Connecting to Gemini AI Neural Network...";
+
+        try {
+            // Step A: Run Math Simulation on Server
+            const simRes = await fetch(`${API_BASE_URL}/simulate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seatId: seatId })
+            });
+            
+            const simData = await simRes.json();
+            currentSim = simData; // Store Global State
+
+            // Update UI with Real Data
+            document.getElementById('simSeatType').innerText = `${simData.seat_info.level.toUpperCase()} • ${simData.seat_info.type.toUpperCase()}`;
+            updateSimTab('governance'); // Render Default Tab
+
+            // Step B: Ask AI for Analysis
+            const aiRes = await fetch(`${API_BASE_URL}/ai-analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    seatName: simData.seat_info.name,
+                    seatType: simData.seat_info.type,
+                    metrics: simData.metrics
+                })
+            });
+
+            const aiData = await aiRes.json();
+            typeWriterEffect(document.getElementById('aiText'), aiData.analysis);
+
+        } catch (error) {
+            console.error("Sim Error:", error);
+            document.getElementById('aiText').innerText = "Simulation Error: " + error.message;
+        }
+    }
+
+    function closeSim() {
+        document.getElementById('simOverlay').classList.remove('active');
+    }
+
+    // --- 3. UI RENDERING (Tabs & Charts) ---
+    function updateSimTab(tab) {
+        document.querySelectorAll('.sim-tab').forEach(t => t.classList.remove('active'));
+        event.target.closest('.sim-tab').classList.add('active');
+        
+        const container = document.getElementById('metricContainer');
+        const d = currentSim.metrics; // Data comes from Backend now
+        const info = currentSim.seat_info;
+        let labels, d1, d2, chartLabel;
+
+        if (tab === 'governance') {
+            container.innerHTML = 
+                createMetric("MCC Pause", d.gov.mcc.curr + " Days", "▼ 50% Cut", "good") +
+                createMetric("Voter Turnout", "58%", "▲ Boost", "good") +
+                createMetric("Continuity", "Stable", "Aligned", "good");
+            
+            labels = ['MCC Days', 'Turnout', 'Continuity'];
+            d1 = [d.gov.mcc.curr, 58, 45];
+            d2 = [d.gov.mcc.onoe, 64, 85];
+            chartLabel = "Governance Metrics";
+        
+        } else if (tab === 'administrative') {
+            container.innerHTML = 
+                createMetric("Staff Fatigue", "High", "▼ Relief", "good") +
+                createMetric("Deployments", d.admin.deployments.curr, "▼ Saved", "good") +
+                createMetric("Complaints", "High", "▼ Drop", "good");
+
+            labels = ['Fatigue', 'Deployments', 'Complaints/10'];
+            d1 = [80, d.admin.deployments.curr * 10, 40];
+            d2 = [30, d.admin.deployments.onoe * 10, 25];
+            chartLabel = "Admin Load";
+
+        } else if (tab === 'financial') {
+            container.innerHTML = 
+                createMetric("Candidate Spend", "₹"+d.fin.cost.curr+"L", "▼ Savings", "good") +
+                createMetric("Logistics Load", "High", "▼ Shared", "good") +
+                createMetric("Efficiency", "Low", "▲ High", "good");
+
+            labels = ['Spend (Lakhs)', 'Logistics', 'Efficiency'];
+            d1 = [d.fin.cost.curr, 90, 40];
+            d2 = [d.fin.cost.onoe, 45, 90];
+            chartLabel = "Financial Efficiency";
+        
+        } else if (tab === 'constitutional') {
+             container.innerHTML = 
+                createMetric("Stability", d.const.stability.curr, "▲ Strong", "good") +
+                createMetric("Fed. Conflict", "High", "▼ Low", "good") +
+                createMetric("Mandate Sync", "None", "Aligned", "good");
+
+            labels = ['Stability', 'Conflict', 'Alignment'];
+            d1 = [d.const.stability.curr, 80, 20];
+            d2 = [d.const.stability.onoe, 30, 95];
+            chartLabel = "Constitutional Health";
+        }
+
+        renderChart(labels, d1, d2, chartLabel);
+    }
+
+    function createMetric(label, val, delta, type) {
+        const colorClass = type === 'good' ? 'delta-good' : 'delta-bad';
+        return `<div class="metric-card">
+            <div class="metric-label">${label}</div>
+            <div class="metric-value">${val}</div>
+            <div class="metric-delta ${colorClass}"><i class="fas fa-arrow-right"></i> ${delta}</div>
+        </div>`;
+    }
+
+    function renderChart(labels, d1, d2, label) {
+        const ctx = document.getElementById('simChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Current System', data: d1, backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.6 },
+                    { label: 'ONOE Scenario', data: d2, backgroundColor: '#a855f7', borderRadius: 6, barPercentage: 0.6 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+    }
+
+    function typeWriterEffect(element, text, speed = 20) {
+        element.innerHTML = "";
+        let i = 0;
+        function type() {
+            if (i < text.length) {
+                element.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(type, speed);
+            }
+        }
+        type();
+    }
+
+    // Initial Load
+    window.onload = function() { loadView('mcd', document.querySelector('.nav-btn.active')); };
+</script>
+</body>
+</html>
